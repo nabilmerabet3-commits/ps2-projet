@@ -16,7 +16,7 @@ jobs:
 
           GSKIT_INC=$(dirname $(find /usr/local/ps2dev -name "gsKit.h" | head -n 1))
           GSKIT_LIB=$(dirname $(find /usr/local/ps2dev -name "libgskit.a" | head -n 1))
-          PACKER=$(find /usr/local/ps2dev -name "ps2-packer" | head -n 1)
+          PACKER=$(find /usr/local/ps2dev -type f -name "ps2-packer" | head -n 1)
 
           BMP_FILE=$(ls *.bmp *.BMP 2>/dev/null | head -n 1)
           bin2c "$BMP_FILE" splash.c splash_bmp
