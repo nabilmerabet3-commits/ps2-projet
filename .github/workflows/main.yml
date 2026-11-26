@@ -3,19 +3,16 @@ on: [push, workflow_dispatch]
 jobs:
   build-opl-db:
     runs-on: ubuntu-latest
-    container:
-      image: ps2dev/ps2dev:v1.2.0
     steps:
       - uses: actions/checkout@v4
       - name: Clone OPL DB-1937 (433f115), replace logo & compile
         run: |
-          apk add --no-cache git make gcc g++ zlib-dev libpng-dev freetype-dev
           git clone https://github.com/Jay-Jay-OPL/OPL-Daily-Builds.git opl_src
           cd opl_src
           git checkout 433f115
           cp -f ../logo.png gfx/logo.png
-          make clean
-          make release
+          cd ..
+          docker run --rm -v "$PWD/opl_src:/src" -w /src ps2dev/ps2dev:v1.2.0 sh -c "apk add --no-cache make gcc g++ zlib-dev libpng-dev freetype-dev && make clean && make release"
       - uses: actions/upload-artifact@v4
         with:
           name: OPNPS2LD-DB-1937-CUSTOM
