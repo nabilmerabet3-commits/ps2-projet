@@ -1,49 +1,21 @@
-name: Render Extracted Textures
+name: Build Custom OPL 1.1.0
 on: [push, workflow_dispatch]
 jobs:
-  render:
+  build-opl:
     runs-on: ubuntu-latest
+    container:
+      image: ps2dev/ps2dev:v1.2.0
     steps:
       - uses: actions/checkout@v4
-      - name: Extract and convert raw buffers to PNG
+      - name: Clone OPL v1.1.0, replace logo & compile
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq binwalk python3-pil
-          mkdir -p raw_dump png_preview
-          binwalk --dd=".*" -C raw_dump unpakd_USGR_777.elf || true
-          python3 - << 'EOF'
-          import os, glob
-          from PIL import Image
-
-          files = sorted(glob.glob("raw_dump/_unpakd_USGR_777.elf.extracted/*"))
-          # Resolutions classiques PS2 / Neo Geo CDZ
-          widths = [640, 512, 320, 304, 256, 128, 64]
-
-          for f in files:
-              name = os.path.basename(f)
-              data = open(f, "rb").read()
-              sz = len(data)
-              if sz < 4096:
-                  continue
-              print(f"Bloc {name}: {sz} octets")
-              # Test 32-bit RGBA et 24-bit RGB sur les largeurs standard
-              for bpp, mode in [(4, "RGBA"), (3, "RGB")]:
-                  if sz % bpp != 0:
-                      continue
-                  pixels = sz // bpp
-                  for w in widths:
-                      if pixels % w == 0:
-                          h = pixels // w
-                          if 32 <= h <= 512:
-                              try:
-                                  img = Image.frombytes(mode, (w, h), data[:w*h*bpp])
-                                  out_name = f"png_preview/{name}_{mode}_{w}x{h}.png"
-                                  img.save(out_name)
-                                  print(f"  -> Genere: {out_name}")
-                              except Exception:
-                                  pass
-          EOF
-          ls -lh png_preview/ || true
+          apk add --no-cache git make gcc g++ zlib-dev libpng-dev freetype-dev
+          git clone --depth 1 --branch v1.1.0 https://github.com/ps2homebrew/Open-PS2-Loader.git opl_src
+          cp -f logo.png opl_src/gfx/logo.png
+          cd opl_src
+          make clean
+          make release
       - uses: actions/upload-artifact@v4
         with:
-          name: PREVIEW-IMAGES
-          path: png_preview/
+          name: OPNPS2LD-1.1.0-CUSTOM
+          path: opl_src/OPNPS2LD.ELF
