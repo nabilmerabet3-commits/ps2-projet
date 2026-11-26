@@ -1,45 +1,63 @@
-name: Inspect USGR_777 ELF
+name: Extract Compressed PNGs
 on: [push, workflow_dispatch]
 jobs:
-  inspect:
+  extract:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Extract PNGs and file strings
+      - name: Decompress and rebuild PNGs
         run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq binwalk python3-pil
           mkdir -p out
+          binwalk --dd=".*" -C out/raw unpakd_USGR_777.elf || true
           python3 - << 'EOF'
-          import re, struct
+          import os, struct, zlib
 
           data = open("unpakd_USGR_777.elf", "rb").read()
+          offsets = [0x1a7518, 0x1c2c58, 0x1d77f8]
 
-          print("=== CHEMINS CDROM0 / MC0 / HOST TROUVES ===")
-          for m in re.finditer(rb"(?:cdrom0|mc0|mass|host):[^\x00]{1,60}", data):
-              print(hex(m.start()), m.group(0).decode("ascii", "ignore"))
+          # Tente une decompression LZSS/LZ4 simple sur chaque bloc
+          def unpack_lz(buf, max_out=512*1024):
+              out = bytearray()
+              i = 0
+              n = len(buf)
+              while i < n and len(out) < max_out:
+                  tag = buf[i]
+                  i += 1
+                  for bit in range(8):
+                      if i >= n or len(out) >= max_out:
+                          break
+                      if (tag >> bit) & 1:
+                          out.append(buf[i])
+                          i += 1
+                      else:
+                          if i + 1 >= n:
+                              break
+                          b1, b2 = buf[i], buf[i+1]
+                          i += 2
+                          dist = ((b2 & 0xF0) << 4) | b1
+                          length = (b2 & 0x0F) + 3
+                          if dist == 0 or dist > len(out):
+                              return bytes(out)
+                          for _ in range(length):
+                              out.append(out[-dist])
+              return bytes(out)
 
-          print("\n=== SIGNATURES PNG TROUVEES ===")
-          sig = b"\x89PNG\r\n\x1a\n"
-          iend = b"IEND\xaeB`\x82"
-          pos = 0
-          idx = 0
-          while True:
-              pos = data.find(sig, pos)
-              if pos == -1:
-                  break
-              end = data.find(iend, pos)
-              if end != -1:
-                  end += len(iend)
-                  png_bytes = data[pos:end]
-                  w, h = struct.unpack(">II", png_bytes[16:24])
-                  fname = f"out/img_{idx}_{hex(pos)}_{w}x{h}.png"
-                  open(fname, "wb").write(png_bytes)
-                  print(f"Image {idx}: offset={hex(pos)} taille={len(png_bytes)} octets ({w}x{h}) -> {fname}")
+          for idx, off in enumerate(offsets):
+              raw = unpack_lz(data[off:off+150000])
+              iend = raw.find(b"IEND\xaeB`\x82")
+              if iend != -1:
+                  png = raw[:iend+8]
+                  w, h = struct.unpack(">II", png[16:24])
+                  fname = f"out/image_{idx+1}_{hex(off)}_{w}x{h}.png"
+                  open(fname, "wb").write(png)
+                  print(f"OK -> {fname} ({len(png)} octets)")
               else:
-                  print(f"Signature PNG partielle ou compressee a {hex(pos)}")
-              pos += 8
-              idx += 1
+                  open(f"out/raw_{idx+1}_{hex(off)}.bin", "wb").write(raw[:32768])
+                  print(f"Flux brut sauvegarde pour {hex(off)}")
           EOF
+          ls -lh out/
       - uses: actions/upload-artifact@v4
         with:
-          name: USGR-777-REPORT
+          name: EXTRACTED-PNGS
           path: out/
