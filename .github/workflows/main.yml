@@ -3,11 +3,13 @@ on: [push, workflow_dispatch]
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: ps2dev/ps2dev:latest
     steps:
       - uses: actions/checkout@v4
-      - name: Compile BOOT.ELF
+      - name: Install PS2DEV & Compile BOOT.ELF
         run: |
+          sudo mkdir -p /usr/local
+          sudo wget -q https://github.com/ps2dev/ps2dev/releases/latest/download/ps2dev-ubuntu-latest.tar.gz -O /tmp/ps2dev.tar.gz
+          sudo tar -xzf /tmp/ps2dev.tar.gz -C /usr/local
           export PS2DEV=/usr/local/ps2dev
           export PS2SDK=$PS2DEV/ps2sdk
           export GSKIT=$PS2DEV/gskit
