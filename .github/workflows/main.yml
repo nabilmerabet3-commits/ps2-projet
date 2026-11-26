@@ -61,6 +61,13 @@ jobs:
           EOF
 
           find fmcb_src -name "*.c" -exec sed -i '1i #include "/src/compat_2008.h"' {} +
+          sed -i 's/gsKit_init_global_custom([^)]*)/gsKit_init_global()/g' fmcb_src/gui.c
+          sed -i 's/info_ptr->width/png_get_image_width(png_ptr, info_ptr)/g' fmcb_src/gui.c
+          sed -i 's/info_ptr->height/png_get_image_height(png_ptr, info_ptr)/g' fmcb_src/gui.c
+          sed -i 's/info_ptr->color_type/png_get_color_type(png_ptr, info_ptr)/g' fmcb_src/gui.c
+          sed -i 's/info_ptr->bit_depth/png_get_bit_depth(png_ptr, info_ptr)/g' fmcb_src/gui.c
+          sed -i 's/info_ptr->rowbytes/png_get_rowbytes(png_ptr, info_ptr)/g' fmcb_src/gui.c
+
           docker run --rm -v "$PWD/fmcb_src:/src" -w /src ps2dev/ps2dev:v1.2.0 sh -c "export PS2DEV=/usr/local/ps2dev && export PS2SDK=\$PS2DEV/ps2sdk && export PATH=\$PATH:\$PS2DEV/bin:\$PS2DEV/ee/bin:\$PS2DEV/iop/bin:\$PS2DEV/dvp/bin:\$PS2SDK/bin && touch \$PS2SDK/ee/include/cdvd_rpc.h && find \$PS2SDK -name '*.h' -exec sed -i 's/#error/\/\/#error/g' {} + && apk add --no-cache make gcc g++ && make"
           echo "=== FICHIERS DANS LAUNCHER1 ET LAUNCHER2 ==="
           find fmcb_src/launcher1 fmcb_src/launcher2 -type f
