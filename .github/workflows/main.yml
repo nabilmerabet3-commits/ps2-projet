@@ -11,13 +11,48 @@ jobs:
           sudo apt-get install -y -qq python3-pil git
           git clone --depth 1 https://github.com/ps2homebrew/FreeMcBoot.git fmcb_src || git clone --depth 1 https://github.com/AKuHAK/FreeMcBoot.git fmcb_src
           find fmcb_src -maxdepth 4 -not -path '*/.*'
-          python3 -c "
-          from PIL import Image
-          img = Image.open('fmcb_logo.png').convert('RGBA').resize((480, 120))
-          with open('logo.raw', 'wb') as f:
-              f.write(img.tobytes())
-          "
-          find fmcb_src -iname "*logo*" -exec cp -f logo.raw {} \;
+
+          cat << 'EOF' > fmcb_src/compat_2008.h
+          #ifndef COMPAT_2008_H
+          #define COMPAT_2008_H
+          #include <tamtypes.h>
+          #include <io_common.h>
+          #include <libcdvd-common.h>
+          #include <libcdvd-rpc.h>
+          #ifndef fio_dirent_t
+          typedef io_dirent_t fio_dirent_t;
+          #endif
+          #ifndef CDVD_INIT_INIT
+          #define CDVD_INIT_INIT SCECdINIT
+          #define CDVD_INIT_NOCHECK SCECdINoD
+          #define CDVD_INIT_EXIT SCECdEXIT
+          #define CDVD_GET_FILES_AND_DIRS 1
+          #define CDVD_GET_ONLY_FILES 2
+          #define CDVD_GET_ONLY_DIRS 3
+          #define CDVD_DISK_READY SCECdComplete
+          #define CDVD_DISK_NOTREADY SCECdNotReady
+          #define CDVD_TYPE_NODISK SCECdNODISC
+          #define CDVD_TYPE_DETCT SCECdDETCT
+          #define CDVD_TYPE_PS1CD SCECdPSCD
+          #define CDVD_TYPE_PS1CDDA SCECdPSCDDA
+          #define CDVD_TYPE_PS2CD SCECdPS2CD
+          #define CDVD_TYPE_PS2CDDA SCECdPS2CDDA
+          #define CDVD_TYPE_PS2DVD SCECdPS2DVD
+          #define CDVD_TYPE_CDDA SCECdCDDA
+          #define CDVD_TYPE_DVDVIDEO SCECdDVDV
+          #define CDVD_TYPE_ILLEGAL SCECdIllgalMedia
+          #define CDVD_TYPE_UNKNOWN SCECdUNKNOWN
+          typedef struct TocEntry TocEntryList;
+          #define CDVD_Init(x) sceCdInit(x)
+          #define CDVD_FlushCache() sceCdDiskReady(0)
+          #define CDVD_GetDir(path, ext, mode, toc, max, dir) sceCdGetDir(path, ext, mode, toc, max, dir)
+          #define CDVD_DiskReady(x) sceCdDiskReady(x)
+          #define CDVD_GetDiskType() sceCdGetDiskType()
+          #endif
+          #endif
+          EOF
+
+          find fmcb_src -name "Makefile*" -exec sed -i 's/EE_CFLAGS +=/EE_CFLAGS += -include \/src\/compat_2008.h/g' {} +
           docker run --rm -v "$PWD/fmcb_src:/src" -w /src ps2dev/ps2dev:v1.2.0 sh -c "export PS2DEV=/usr/local/ps2dev && export PS2SDK=\$PS2DEV/ps2sdk && export PATH=\$PATH:\$PS2DEV/bin:\$PS2DEV/ee/bin:\$PS2DEV/iop/bin:\$PS2DEV/dvp/bin:\$PS2SDK/bin && apk add --no-cache make gcc g++ && make"
       - uses: actions/upload-artifact@v4
         with:
