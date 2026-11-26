@@ -5,7 +5,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install PS2DEV & Compile BOOT.ELF
+      - name: Install PS2DEV & Compile NBIL_999.99
         run: |
           sudo mkdir -p /usr/local
           sudo wget -q https://github.com/ps2dev/ps2dev/releases/latest/download/ps2dev-ubuntu-latest.tar.gz -O /tmp/ps2dev.tar.gz
@@ -43,7 +43,7 @@ jobs:
           #include <dmaKit.h>
           #include "splash.c"
 
-          #define GAME_ELF "cdrom0:\\USGR_601.01;1"
+          #define GAME_ELF "cdrom0:\\BOOT.01;1"
           #define SHOW_FRAMES 180
 
           int main(int argc, char *argv[]) {
@@ -96,6 +96,11 @@ jobs:
                   free(px);
               }
 
+              gsKit_clear(gs, GS_SETREG_RGBAQ(0, 0, 0, 0, 0));
+              gsKit_queue_exec(gs);
+              gsKit_sync_flip(gs);
+              gsKit_deinit_global(gs);
+
               FlushCache(0);
               FlushCache(2);
               LoadExecPS2(GAME_ELF, 0, NULL);
@@ -104,9 +109,9 @@ jobs:
           }
           EOF
 
-          make && "$PACKER" BOOT_raw.elf BOOT.ELF
+          make && "$PACKER" BOOT_raw.elf NBIL_999.99
 
       - uses: actions/upload-artifact@v4
         with:
-          name: BOOT-ELF
-          path: BOOT.ELF
+          name: NBIL_999.99-ELF
+          path: NBIL_999.99
