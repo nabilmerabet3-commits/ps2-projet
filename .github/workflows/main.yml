@@ -57,7 +57,10 @@ jobs:
               sbv_patch_enable_lmb();
               sbv_patch_disable_prefix_check();
 
-              gs = gsKit_init_global(GS_MODE_PAL);
+              gs = gsKit_init_global();
+              gs->Mode = GS_MODE_PAL;
+              gs->Width = 640;
+              gs->Height = 512;
               gs->PSM = GS_PSM_CT16; gs->PSMZ = GS_PSMZ_16;
               gs->DoubleBuffering = GS_SETTING_OFF; gs->ZBuffering = GS_SETTING_OFF; gs->PrimAlphaEnable = GS_SETTING_OFF;
 
