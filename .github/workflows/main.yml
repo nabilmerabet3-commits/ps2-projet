@@ -39,7 +39,7 @@ jobs:
           #define CDVD_TYPE_DVDVIDEO 0xFE
           #define CDVD_TYPE_ILLEGAL 0xFF
           #define CDVD_TYPE_UNKNOWN 0x05
-          struct TocEntryList {
+          struct TocEntry {
               u32 fileLBA;
               u32 fileSize;
               u8 fileProperties;
