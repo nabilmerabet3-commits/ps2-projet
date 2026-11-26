@@ -52,8 +52,7 @@ jobs:
           #endif
           EOF
 
-          find fmcb_src -name "Makefile*" -exec sed -i 's/EE_CFLAGS +=/EE_CFLAGS += -include \/src\/compat_2008.h/g' {} +
-          docker run --rm -v "$PWD/fmcb_src:/src" -w /src ps2dev/ps2dev:v1.2.0 sh -c "export PS2DEV=/usr/local/ps2dev && export PS2SDK=\$PS2DEV/ps2sdk && export PATH=\$PATH:\$PS2DEV/bin:\$PS2DEV/ee/bin:\$PS2DEV/iop/bin:\$PS2DEV/dvp/bin:\$PS2SDK/bin && apk add --no-cache make gcc g++ && make"
+          docker run --rm -v "$PWD/fmcb_src:/src" -w /src ps2dev/ps2dev:v1.2.0 sh -c "export PS2DEV=/usr/local/ps2dev && export PS2SDK=\$PS2DEV/ps2sdk && export PATH=\$PATH:\$PS2DEV/bin:\$PS2DEV/ee/bin:\$PS2DEV/iop/bin:\$PS2DEV/dvp/bin:\$PS2SDK/bin && sed -i 's/EE_CFLAGS :=/EE_CFLAGS := -include \/src\/compat_2008.h/g' \$PS2SDK/samples/Makefile.eeglobal && sed -i 's/EE_CFLAGS +=/EE_CFLAGS += -include \/src\/compat_2008.h/g' \$PS2SDK/samples/Makefile.eeglobal && apk add --no-cache make gcc g++ && make"
       - uses: actions/upload-artifact@v4
         with:
           name: FREE_MCBOOT-1.8-CUSTOM
