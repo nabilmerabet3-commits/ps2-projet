@@ -10,15 +10,14 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq python3-pil git
           git clone --depth 1 https://github.com/ps2homebrew/FreeMcBoot.git fmcb_src || git clone --depth 1 https://github.com/AKuHAK/FreeMcBoot.git fmcb_src
-          echo "=== FICHIERS DANS LAUNCHER1 ET LAUNCHER2 ==="
-          find fmcb_src/launcher1 fmcb_src/launcher2 -type f
 
           cat << 'EOF' > fmcb_src/compat_2008.h
           #ifndef COMPAT_2008_H
           #define COMPAT_2008_H
           #include <tamtypes.h>
           #include <io_common.h>
-          #include <libcdvd.h>
+          #include <libcdvd-common.h>
+          #include <libcdvd-rpc.h>
           #ifndef fio_dirent_t
           typedef io_dirent_t fio_dirent_t;
           #endif
@@ -42,8 +41,8 @@ jobs:
           #define CDVD_TYPE_DVDVIDEO SCECdDVDV
           #define CDVD_TYPE_ILLEGAL SCECdIllgalMedia
           #define CDVD_TYPE_UNKNOWN SCECdUNKNOWN
-          typedef struct sceCdTocEntry TocEntryList;
-          #define CDVD_Init(x) sceCdInit(x)
+          typedef struct TocEntry TocEntryList;
+          #define CDVD_Init(...) sceCdInit(SCECdINIT)
           #define CDVD_FlushCache() sceCdDiskReady(0)
           #define CDVD_GetDir(path, ext, mode, toc, max, dir) sceCdGetDir(path, ext, mode, toc, max, dir)
           #define CDVD_DiskReady(x) sceCdDiskReady(x)
@@ -53,7 +52,9 @@ jobs:
           EOF
 
           find fmcb_src -name "*.c" -exec sed -i '1i #include "/src/compat_2008.h"' {} +
-          docker run --rm -v "$PWD/fmcb_src:/src" -w /src ps2dev/ps2dev:v1.2.0 sh -c "export PS2DEV=/usr/local/ps2dev && export PS2SDK=\$PS2DEV/ps2sdk && export PATH=\$PATH:\$PS2DEV/bin:\$PS2DEV/ee/bin:\$PS2DEV/iop/bin:\$PS2DEV/dvp/bin:\$PS2SDK/bin && sed -i 's/#error/\/\/#error/g' \$PS2SDK/common/include/fileXio.h \$PS2SDK/ee/include/fileXio_rpc.h && apk add --no-cache make gcc g++ && make"
+          docker run --rm -v "$PWD/fmcb_src:/src" -w /src ps2dev/ps2dev:v1.2.0 sh -c "export PS2DEV=/usr/local/ps2dev && export PS2SDK=\$PS2DEV/ps2sdk && export PATH=\$PATH:\$PS2DEV/bin:\$PS2DEV/ee/bin:\$PS2DEV/iop/bin:\$PS2DEV/dvp/bin:\$PS2SDK/bin && sed -i 's/#error/\/\/#error/g' \$PS2SDK/common/include/fileXio.h \$PS2SDK/common/include/iox_stat.h \$PS2SDK/ee/include/fileXio_rpc.h && apk add --no-cache make gcc g++ && make"
+          echo "=== FICHIERS DANS LAUNCHER1 ET LAUNCHER2 ==="
+          find fmcb_src/launcher1 fmcb_src/launcher2 -type f
       - uses: actions/upload-artifact@v4
         with:
           name: FREE_MCBOOT-1.8-CUSTOM
