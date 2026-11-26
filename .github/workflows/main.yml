@@ -9,15 +9,16 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq python3-pil git
+          git clone --depth 1 https://github.com/ps2homebrew/FreeMcBoot.git fmcb_src || git clone --depth 1 https://github.com/AKuHAK/FreeMcBoot.git fmcb_src
+          find fmcb_src -maxdepth 4 -not -path '*/.*'
           python3 -c "
           from PIL import Image
           img = Image.open('fmcb_logo.png').convert('RGBA').resize((480, 120))
           with open('logo.raw', 'wb') as f:
               f.write(img.tobytes())
           "
-          git clone --depth 1 https://github.com/ps2homebrew/FreeMcBoot.git fmcb_src || git clone --depth 1 https://github.com/AKuHAK/FreeMcBoot.git fmcb_src
-          find fmcb_src -iname "*logo*.raw" -exec cp -f logo.raw {} \;
-          docker run --rm -v "$PWD/fmcb_src:/src" -w /src ps2dev/ps2dev:v1.2.0 sh -c "apk add --no-cache make gcc g++ && make clean && make"
+          find fmcb_src -iname "*logo*" -exec cp -f logo.raw {} \;
+          docker run --rm -v "$PWD/fmcb_src:/src" -w /src ps2dev/ps2dev:v1.2.0 sh -c "export PS2DEV=/usr/local/ps2dev && export PS2SDK=\$PS2DEV/ps2sdk && export PATH=\$PATH:\$PS2DEV/bin:\$PS2DEV/ee/bin:\$PS2DEV/iop/bin:\$PS2DEV/dvp/bin:\$PS2SDK/bin && apk add --no-cache make gcc g++ && make"
       - uses: actions/upload-artifact@v4
         with:
           name: FREE_MCBOOT-1.8-CUSTOM
