@@ -22,6 +22,7 @@ jobs:
           cp -f logo.png opl_src/gfx/logo.png
 
           cd opl_src
+          sed -i 's/EE_CFLAGS +=/EE_CFLAGS += -Wno-incompatible-pointer-types -Wno-implicit-function-declaration/g' Makefile
           make clean
           make release
       - uses: actions/upload-artifact@v4
