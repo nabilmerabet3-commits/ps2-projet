@@ -12,22 +12,24 @@ jobs:
           sudo tar -xzf /tmp/ps2dev.tar.gz -C /usr/local
           export PS2DEV=/usr/local/ps2dev
           export PS2SDK=$PS2DEV/ps2sdk
-          export GSKIT=$PS2DEV/gskit
           export PATH=$PATH:$PS2DEV/bin:$PS2DEV/ee/bin:$PS2DEV/iop/bin:$PS2DEV/dvp/bin:$PS2SDK/bin
 
+          GSKIT_INC=$(dirname $(find /usr/local/ps2dev -name "gsKit.h" | head -n 1))
+          GSKIT_LIB=$(dirname $(find /usr/local/ps2dev -name "libgskit.a" | head -n 1))
+          PACKER=$(find /usr/local/ps2dev -name "ps2-packer" | head -n 1)
+
           BMP_FILE=$(ls *.bmp *.BMP 2>/dev/null | head -n 1)
-          echo "Image trouvee : $BMP_FILE"
           bin2c "$BMP_FILE" splash.c splash_bmp
 
-          cat << 'EOF' > Makefile
+          cat << EOF > Makefile
           EE_BIN = BOOT_raw.elf
           EE_OBJS = main.o
-          EE_INCS = -I$(GSKIT)/include -I$(PS2SDK)/ports/include
-          EE_LDFLAGS = -L$(GSKIT)/lib -L$(PS2SDK)/ports/lib -Wl,-Ttext,0x00200000
+          EE_INCS = -I$GSKIT_INC -I\$(PS2SDK)/ports/include
+          EE_LDFLAGS = -L$GSKIT_LIB -L\$(PS2SDK)/ports/lib -Wl,-Ttext,0x00200000
           EE_LIBS = -lgskit -ldmakit -lpatches -lc -lkernel
-          all: $(EE_BIN)
-          include $(PS2SDK)/samples/Makefile.pref
-          include $(PS2SDK)/samples/Makefile.eeglobal
+          all: \$(EE_BIN)
+          include \$(PS2SDK)/samples/Makefile.pref
+          include \$(PS2SDK)/samples/Makefile.eeglobal
           EOF
 
           cat << 'EOF' > main.c
@@ -99,7 +101,7 @@ jobs:
           }
           EOF
 
-          make && ps2-packer BOOT_raw.elf BOOT.ELF
+          make && "$PACKER" BOOT_raw.elf BOOT.ELF
 
       - uses: actions/upload-artifact@v4
         with:
