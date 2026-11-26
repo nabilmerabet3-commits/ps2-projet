@@ -3,15 +3,24 @@ on: [push, workflow_dispatch]
 jobs:
   build-opl:
     runs-on: ubuntu-latest
-    container:
-      image: ps2dev/ps2dev:v1.2.0
     steps:
       - uses: actions/checkout@v4
-      - name: Clone OPL v1.1.0, replace logo & compile
+      - name: Setup PS2DEV & Compile OPL v1.1.0
         run: |
-          apk add --no-cache git make gcc g++ zlib-dev libpng-dev freetype-dev
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq git make gcc g++ patch wget tar xz-utils zlib1g-dev libpng-dev freetype2-demos
+          sudo mkdir -p /usr/local
+          sudo wget -q https://github.com/ps2dev/ps2dev/releases/latest/download/ps2dev-ubuntu-latest.tar.gz -O /tmp/ps2dev.tar.gz
+          sudo tar -xzf /tmp/ps2dev.tar.gz -C /usr/local
+
+          export PS2DEV=/usr/local/ps2dev
+          export PS2SDK=$PS2DEV/ps2sdk
+          export GSKIT=$PS2DEV/gsKit
+          export PATH=$PATH:$PS2DEV/bin:$PS2DEV/ee/bin:$PS2DEV/iop/bin:$PS2DEV/dvp/bin:$PS2SDK/bin
+
           git clone --depth 1 --branch v1.1.0 https://github.com/ps2homebrew/Open-PS2-Loader.git opl_src
           cp -f logo.png opl_src/gfx/logo.png
+
           cd opl_src
           make clean
           make release
