@@ -16,33 +16,42 @@ jobs:
           #define COMPAT_2008_H
           #include <tamtypes.h>
           #include <io_common.h>
-          #include <libcdvd-common.h>
-          #include <libcdvd-rpc.h>
           #ifndef fio_dirent_t
           typedef io_dirent_t fio_dirent_t;
           #endif
           #ifndef CDVD_INIT_INIT
-          #define CDVD_INIT_INIT SCECdINIT
-          #define CDVD_INIT_NOCHECK SCECdINoD
-          #define CDVD_INIT_EXIT SCECdEXIT
+          #define CDVD_INIT_INIT 0
+          #define CDVD_INIT_NOCHECK 1
+          #define CDVD_INIT_EXIT 5
           #define CDVD_GET_FILES_AND_DIRS 1
           #define CDVD_GET_ONLY_FILES 2
           #define CDVD_GET_ONLY_DIRS 3
-          #define CDVD_DISK_READY SCECdComplete
-          #define CDVD_DISK_NOTREADY SCECdNotReady
-          #define CDVD_TYPE_NODISK SCECdNODISC
-          #define CDVD_TYPE_DETCT SCECdDETCT
-          #define CDVD_TYPE_PS1CD SCECdPSCD
-          #define CDVD_TYPE_PS1CDDA SCECdPSCDDA
-          #define CDVD_TYPE_PS2CD SCECdPS2CD
-          #define CDVD_TYPE_PS2CDDA SCECdPS2CDDA
-          #define CDVD_TYPE_PS2DVD SCECdPS2DVD
-          #define CDVD_TYPE_CDDA SCECdCDDA
-          #define CDVD_TYPE_DVDVIDEO SCECdDVDV
-          #define CDVD_TYPE_ILLEGAL SCECdIllgalMedia
-          #define CDVD_TYPE_UNKNOWN SCECdUNKNOWN
-          typedef struct TocEntry TocEntryList;
-          #define CDVD_Init(...) sceCdInit(SCECdINIT)
+          #define CDVD_DISK_READY 2
+          #define CDVD_DISK_NOTREADY 6
+          #define CDVD_TYPE_NODISK 0x00
+          #define CDVD_TYPE_DETCT 0x01
+          #define CDVD_TYPE_PS1CD 0x10
+          #define CDVD_TYPE_PS1CDDA 0x11
+          #define CDVD_TYPE_PS2CD 0x12
+          #define CDVD_TYPE_PS2CDDA 0x13
+          #define CDVD_TYPE_PS2DVD 0x14
+          #define CDVD_TYPE_CDDA 0xFD
+          #define CDVD_TYPE_DVDVIDEO 0xFE
+          #define CDVD_TYPE_ILLEGAL 0xFF
+          #define CDVD_TYPE_UNKNOWN 0x05
+          typedef struct {
+              u32 fileLBA;
+              u32 fileSize;
+              u8 fileProperties;
+              u8 padding1[3];
+              char filename[128 + 1];
+              u8 dateStamp[8];
+          } TocEntryList;
+          int sceCdInit(int mode);
+          int sceCdDiskReady(int mode);
+          int sceCdGetDiskType(void);
+          int sceCdGetDir(const char *pathname, const char *extensions, unsigned int inc_dirs, void *tocEntry, unsigned int req_entries, char *new_pathname);
+          #define CDVD_Init(...) sceCdInit(0)
           #define CDVD_FlushCache() sceCdDiskReady(0)
           #define CDVD_GetDir(path, ext, mode, toc, max, dir) sceCdGetDir(path, ext, mode, toc, max, dir)
           #define CDVD_DiskReady(x) sceCdDiskReady(x)
@@ -52,7 +61,7 @@ jobs:
           EOF
 
           find fmcb_src -name "*.c" -exec sed -i '1i #include "/src/compat_2008.h"' {} +
-          docker run --rm -v "$PWD/fmcb_src:/src" -w /src ps2dev/ps2dev:v1.2.0 sh -c "export PS2DEV=/usr/local/ps2dev && export PS2SDK=\$PS2DEV/ps2sdk && export PATH=\$PATH:\$PS2DEV/bin:\$PS2DEV/ee/bin:\$PS2DEV/iop/bin:\$PS2DEV/dvp/bin:\$PS2SDK/bin && sed -i 's/#error/\/\/#error/g' \$PS2SDK/common/include/fileXio.h \$PS2SDK/common/include/iox_stat.h \$PS2SDK/ee/include/fileXio_rpc.h && apk add --no-cache make gcc g++ && make"
+          docker run --rm -v "$PWD/fmcb_src:/src" -w /src ps2dev/ps2dev:v1.2.0 sh -c "export PS2DEV=/usr/local/ps2dev && export PS2SDK=\$PS2DEV/ps2sdk && export PATH=\$PATH:\$PS2DEV/bin:\$PS2DEV/ee/bin:\$PS2DEV/iop/bin:\$PS2DEV/dvp/bin:\$PS2SDK/bin && touch \$PS2SDK/ee/include/cdvd_rpc.h && sed -i 's/#error/\/\/#error/g' \$PS2SDK/common/include/fileXio.h \$PS2SDK/common/include/iox_stat.h \$PS2SDK/ee/include/fileXio_rpc.h \$PS2SDK/ee/include/fileio.h && apk add --no-cache make gcc g++ && make"
           echo "=== FICHIERS DANS LAUNCHER1 ET LAUNCHER2 ==="
           find fmcb_src/launcher1 fmcb_src/launcher2 -type f
       - uses: actions/upload-artifact@v4
