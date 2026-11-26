@@ -1,31 +1,22 @@
-name: Build Custom OPL
+name: Build Custom OPL DB-1937
 on: [push, workflow_dispatch]
 jobs:
-  build-opl:
+  build-opl-db:
     runs-on: ubuntu-latest
+    container:
+      image: ps2dev/ps2dev:v1.2.0
     steps:
       - uses: actions/checkout@v4
-      - name: Setup PS2DEV & Compile OPL
+      - name: Clone OPL DB-1937 (433f115), replace logo & compile
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq git make gcc g++ patch wget tar xz-utils zlib1g-dev libpng-dev freetype2-demos
-          sudo mkdir -p /usr/local
-          sudo wget -q https://github.com/ps2dev/ps2dev/releases/latest/download/ps2dev-ubuntu-latest.tar.gz -O /tmp/ps2dev.tar.gz
-          sudo tar -xzf /tmp/ps2dev.tar.gz -C /usr/local
-
-          export PS2DEV=/usr/local/ps2dev
-          export PS2SDK=$PS2DEV/ps2sdk
-          export GSKIT=$PS2DEV/gsKit
-          export PATH=$PATH:$PS2DEV/bin:$PS2DEV/ee/bin:$PS2DEV/iop/bin:$PS2DEV/dvp/bin:$PS2SDK/bin
-
-          git clone --depth 1 https://github.com/ps2homebrew/Open-PS2-Loader.git opl_src
-          cp -f logo.png opl_src/gfx/logo.png
-
+          apk add --no-cache git make gcc g++ zlib-dev libpng-dev freetype-dev
+          git clone https://github.com/Jay-Jay-OPL/OPL-Daily-Builds.git opl_src
           cd opl_src
-          sed -i 's/ps2-packer.*/cp -f opl.elf OPNPS2LD.ELF/g' Makefile
+          git checkout 433f115
+          cp -f ../logo.png gfx/logo.png
           make clean
-          make
+          make release
       - uses: actions/upload-artifact@v4
         with:
-          name: OPNPS2LD-CUSTOM
+          name: OPNPS2LD-DB-1937-CUSTOM
           path: opl_src/OPNPS2LD.ELF
