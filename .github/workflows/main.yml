@@ -1,11 +1,11 @@
-name: Build Custom OPL 1.1.0
+name: Build Custom OPL
 on: [push, workflow_dispatch]
 jobs:
   build-opl:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Setup PS2DEV & Compile OPL v1.1.0
+      - name: Setup PS2DEV & Compile OPL
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq git make gcc g++ patch wget tar xz-utils zlib1g-dev libpng-dev freetype2-demos
@@ -18,14 +18,13 @@ jobs:
           export GSKIT=$PS2DEV/gsKit
           export PATH=$PATH:$PS2DEV/bin:$PS2DEV/ee/bin:$PS2DEV/iop/bin:$PS2DEV/dvp/bin:$PS2SDK/bin
 
-          git clone --depth 1 --branch v1.1.0 https://github.com/ps2homebrew/Open-PS2-Loader.git opl_src
+          git clone --depth 1 https://github.com/ps2homebrew/Open-PS2-Loader.git opl_src
           cp -f logo.png opl_src/gfx/logo.png
 
           cd opl_src
-          sed -i 's/EE_CFLAGS +=/EE_CFLAGS += -Wno-incompatible-pointer-types -Wno-implicit-function-declaration/g' Makefile
           make clean
           make release
       - uses: actions/upload-artifact@v4
         with:
-          name: OPNPS2LD-1.1.0-CUSTOM
+          name: OPNPS2LD-CUSTOM
           path: opl_src/OPNPS2LD.ELF
