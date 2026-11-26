@@ -5,17 +5,45 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect & Compile FMCB 1.8 Launcher
+      - name: Compile FMCB 1.8 Launcher
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq python3-pil git
           git clone --depth 1 https://github.com/ps2homebrew/FreeMcBoot.git fmcb_src || git clone --depth 1 https://github.com/AKuHAK/FreeMcBoot.git fmcb_src
-          echo "=== CONTENU DE LAUNCHER1 ET LAUNCHER2 ==="
-          find fmcb_src/launcher1 fmcb_src/launcher2 -type f
-          echo "=== MAKEFILE RACINE ==="
-          cat fmcb_src/Makefile
 
+          cat << 'EOF' > fmcb_src/compat_2008.h
+          #ifndef COMPAT_2008_H
+          #define COMPAT_2008_H
+          #include <tamtypes.h>
+          #include <io_common.h>
+          #ifndef fio_dirent_t
+          typedef io_dirent_t fio_dirent_t;
+          #endif
+          typedef int CdvdDiscType_t;
+          #define CDVD_INIT_INIT 0
+          #define CDVD_INIT_NOCHECK 1
+          #define CDVD_INIT_EXIT 5
+          #define CDVD_STAT_OPEN 0x01
+          #define CDVD_TYPE_NODISK 0x00
+          #define CDVD_TYPE_DETCT 0x01
+          #define CDVD_TYPE_DETECT 0x01
+          #define CDVD_TYPE_PS1CD 0x10
+          #define CDVD_TYPE_PS1CDDA 0x11
+          #define CDVD_TYPE_PS2CD 0x12
+          #define CDVD_TYPE_PS2CDDA 0x13
+          #define CDVD_TYPE_PS2DVD 0x14
+          #define CDVD_TYPE_CDDA 0xFD
+          #define CDVD_TYPE_DVDVIDEO 0xFE
+          #define CDVD_TYPE_ILLEGAL 0xFF
+          #define CDVD_TYPE_UNKNOWN 0x05
+          #endif
+          EOF
+
+          find fmcb_src/launcher1 fmcb_src/launcher2 -name "*.c" -exec sed -i '1i #include "/src/compat_2008.h"' {} +
           docker run --rm -v "$PWD/fmcb_src:/src" -w /src ps2dev/ps2dev:v1.2.0 sh -c "export PS2DEV=/usr/local/ps2dev && export PS2SDK=\$PS2DEV/ps2sdk && export PATH=\$PATH:\$PS2DEV/bin:\$PS2DEV/ee/bin:\$PS2DEV/iop/bin:\$PS2DEV/dvp/bin:\$PS2SDK/bin && find \$PS2SDK -name '*.h' -exec sed -i 's/#error/\/\/#error/g' {} + && apk add --no-cache make gcc g++ && make -C launcher1 && make -C launcher2"
+          echo "=== FICHIERS DANS LAUNCHER2 ==="
+          find fmcb_src/launcher2 -type f
+          grep -rn -i "logo" fmcb_src/launcher2/ | head -n 30
       - uses: actions/upload-artifact@v4
         with:
           name: FMCB-1.8-LAUNCHER
