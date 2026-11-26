@@ -44,7 +44,8 @@ jobs:
           #include "splash.c"
 
           #define GAME_ELF "cdrom0:\\BOOT.01;1"
-          #define SHOW_FRAMES 180
+          #define SHOW_FRAMES 200
+          #define FADE_FRAMES 30
 
           int main(int argc, char *argv[]) {
               unsigned char *bmp = splash_bmp;
@@ -62,7 +63,9 @@ jobs:
               gs->Width = 640;
               gs->Height = 512;
               gs->PSM = GS_PSM_CT16; gs->PSMZ = GS_PSMZ_16;
-              gs->DoubleBuffering = GS_SETTING_OFF; gs->ZBuffering = GS_SETTING_OFF; gs->PrimAlphaEnable = GS_SETTING_OFF;
+              gs->DoubleBuffering = GS_SETTING_OFF;
+              gs->ZBuffering = GS_SETTING_OFF;
+              gs->PrimAlphaEnable = GS_SETTING_ON;
 
               dmaKit_init(D_CTRL_RELE_OFF, D_CTRL_MFD_OFF, D_CTRL_STS_UNSPEC, D_CTRL_STD_OFF, D_CTRL_RCYC_8, 1 << DMA_CHANNEL_GIF);
               dmaKit_chan_init(DMA_CHANNEL_GIF);
@@ -88,8 +91,14 @@ jobs:
                   gsKit_texture_upload(gs, &tex);
 
                   for (i = 0; i < SHOW_FRAMES; i++) {
+                      u8 lum = 0x80;
+                      if (i < FADE_FRAMES) {
+                          lum = (u8)((0x80 * i) / FADE_FRAMES);
+                      } else if (i >= SHOW_FRAMES - FADE_FRAMES) {
+                          lum = (u8)((0x80 * (SHOW_FRAMES - 1 - i)) / FADE_FRAMES);
+                      }
                       gsKit_clear(gs, GS_SETREG_RGBAQ(0, 0, 0, 0, 0));
-                      gsKit_prim_sprite_texture(gs, &tex, 0, 0, 0, 0, gs->Width, gs->Height, w, abs_h, 1, GS_SETREG_RGBAQ(0x80, 0x80, 0x80, 0x80, 0));
+                      gsKit_prim_sprite_texture(gs, &tex, 0, 0, 0, 0, gs->Width, gs->Height, w, abs_h, 1, GS_SETREG_RGBAQ(lum, lum, lum, 0x80, 0));
                       gsKit_queue_exec(gs);
                       gsKit_sync_flip(gs);
                   }
