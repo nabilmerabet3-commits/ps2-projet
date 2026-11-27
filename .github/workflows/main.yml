@@ -1,90 +1,119 @@
-name: Build Custom FMCB 1.8 Launcher
+name: Build Custom PS2 Boot Splash Launcher
 on: [push, workflow_dispatch]
 jobs:
-  build-fmcb:
+  build-splash:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inject fmcb_logo.png & Compile FMCB 1.8 Launcher
+      - name: Generate Splash Header & Compile NABIL_SPLASH.ELF
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq python3-pil git
-          git clone --depth 1 https://github.com/ps2homebrew/FreeMcBoot.git fmcb_src || git clone --depth 1 https://github.com/AKuHAK/FreeMcBoot.git fmcb_src
+          sudo apt-get install -y -qq python3-pil
+          mkdir -p splash_src
 
           python3 - << 'EOF'
           from PIL import Image
           import os
 
           logo_path = "fmcb_logo.png" if os.path.exists("fmcb_logo.png") else "INJECT/fmcb_logo.png"
-          img = Image.open(logo_path).convert("RGBA").resize((240, 83), Image.Resampling.LANCZOS)
+          img = Image.open(logo_path).convert("RGBA").resize((320, 110), Image.Resampling.LANCZOS)
           w, h = img.size
 
-          with open("fmcb_src/launcher2/_splash.h", "w") as f:
-              f.write('// Custom NABIL GAMES Splash\n#include "defines.h"\n\n')
-              f.write(f'uint32 splash_w = {w};\n')
-              f.write(f'uint32 splash_h = {h};\n\n')
-              f.write('uint32 __attribute__((aligned(16))) splash[] = {\n')
+          with open("splash_src/logo_data.h", "w") as f:
+              f.write('#include <tamtypes.h>\n\n')
+              f.write(f'#define LOGO_W {w}\n')
+              f.write(f'#define LOGO_H {h}\n\n')
+              f.write('static u32 __attribute__((aligned(16))) logo_pixels[] = {\n')
               for y in range(h):
-                  f.write(f'\t// row {y}\n')
-                  row_vals = []
+                  row = []
                   for x in range(w):
                       r, g, b, a = img.getpixel((x, y))
                       ps2_a = int(round((a / 255.0) * 128.0))
                       val = (ps2_a << 24) | (b << 16) | (g << 8) | r
-                      row_vals.append(f'0x{val:08x}')
-                  f.write('\t' + ', '.join(row_vals) + ',\n')
+                      row.append(f'0x{val:08x}')
+                  f.write('\t' + ', '.join(row) + ',\n')
               f.write('};\n')
-          print("Injection de fmcb_logo.png dans _splash.h réussie (240x83) !")
           EOF
 
-          cat << 'EOF' > fmcb_src/compat_2008.h
-          #ifndef COMPAT_2008_H
-          #define COMPAT_2008_H
+          cat << 'EOF' > splash_src/main.c
           #include <tamtypes.h>
-          #include <io_common.h>
-          #ifndef fio_dirent_t
-          typedef io_dirent_t fio_dirent_t;
-          #endif
-          typedef int CdvdDiscType_t;
-          #define CDVD_INIT_INIT 0
-          #define CDVD_INIT_NOCHECK 1
-          #define CDVD_INIT_EXIT 5
-          #define CDVD_STAT_OPEN 0x01
-          #define CDVD_TYPE_NODISK 0x00
-          #define CDVD_TYPE_DETCT 0x01
-          #define CDVD_TYPE_DETECT 0x01
-          #define CDVD_TYPE_PS1CD 0x10
-          #define CDVD_TYPE_PS1CDDA 0x11
-          #define CDVD_TYPE_PS2CD 0x12
-          #define CDVD_TYPE_PS2CDDA 0x13
-          #define CDVD_TYPE_PS2DVD 0x14
-          #define CDVD_TYPE_CDDA 0xFD
-          #define CDVD_TYPE_DVDVIDEO 0xFE
-          #define CDVD_TYPE_ILLEGAL 0xFF
-          #define CDVD_TYPE_UNKNOWN 0x05
-          static inline int padReset(void) { return 1; }
-          static inline int cdInit(int mode) { (void)mode; return 1; }
-          static inline int cdDiskReady(int mode) { (void)mode; return 2; }
-          static inline int cdStatus(void) { return 0; }
-          static inline int cdGetDiscType(void) { return CDVD_TYPE_NODISK; }
-          #endif
+          #include <kernel.h>
+          #include <sifrpc.h>
+          #include <loadfile.h>
+          #include <iopcontrol.h>
+          #include <iopheap.h>
+          #include <sbv_patches.h>
+          #include <gsKit.h>
+          #include <dmaKit.h>
+          #include <unistd.h>
+          #include "logo_data.h"
+
+          int main(int argc, char *argv[]) {
+              SifInitRpc(0);
+              while (!SifIopReset("", 0)) {};
+              while (!SifIopSync()) {};
+              SifInitRpc(0);
+              sbv_patch_enable_lmb();
+              sbv_patch_disable_prefix_check();
+
+              GSGLOBAL *gsGlobal = gsKit_init_global();
+              GSTEXTURE tex;
+              dmaKit_init(D_CTRL_RELE_OFF, D_CTRL_MFD_OFF, D_CTRL_STS_UNSPEC, D_CTRL_STD_OFF, D_CTRL_RCYC_8, 1 << DMA_CHANNEL_GIF);
+              dmaKit_chan_init(DMA_CHANNEL_GIF);
+
+              gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
+              gsKit_init_screen(gsGlobal);
+              gsKit_mode_switch(gsGlobal, GS_ONESHOT);
+
+              tex.Width = LOGO_W;
+              tex.Height = LOGO_H;
+              tex.PSM = GS_PSM_CT32;
+              tex.Mem = logo_pixels;
+              tex.Vram = gsKit_vram_alloc(gsGlobal, gsKit_texture_size(tex.Width, tex.Height, tex.PSM), GSKIT_ALLOC_USERBUFFER);
+              gsKit_texture_upload(gsGlobal, &tex);
+
+              float x = (gsGlobal->Width - LOGO_W) / 2.0f;
+              float y = (gsGlobal->Height - LOGO_H) / 2.0f;
+
+              gsKit_clear(gsGlobal, GS_SETREG_RGBAQ(0x00, 0x00, 0x00, 0x80, 0x00));
+              gsKit_prim_sprite_texture(gsGlobal, &tex, x, y, 0.0f, 0.0f, x + LOGO_W, y + LOGO_H, LOGO_W, LOGO_H, 1, GS_SETREG_RGBAQ(0x80, 0x80, 0x80, 0x80, 0x00));
+              gsKit_queue_exec(gsGlobal);
+              gsKit_sync_flip(gsGlobal);
+
+              sleep(3);
+
+              const char *targets[] = {
+                  "mc0:/APPS/OPNPS2LD.ELF",
+                  "mc1:/APPS/OPNPS2LD.ELF",
+                  "mc0:/BOOT/BOOT2.ELF",
+                  "mc0:/BOOT/BOOT.ELF",
+                  "mass:/BOOT/BOOT.ELF",
+                  NULL
+              };
+              for (int i = 0; targets[i] != NULL; i++) {
+                  FILE *f = fopen(targets[i], "rb");
+                  if (f) {
+                      fclose(f);
+                      LoadExecPS2(targets[i], 0, NULL);
+                  }
+              }
+              return 0;
+          }
           EOF
 
-          sed -i '1i #include "/src/compat_2008.h"' fmcb_src/launcher2/launcher2.c
-          sed -i 's/make -C chkesr/#make -C chkesr/g; s/\$(MAKE) -C chkesr/#\$(MAKE) -C chkesr/g' fmcb_src/launcher2/Makefile
-          sed -i 's/make -C init/#make -C init/g; s/\$(MAKE) -C init/#\$(MAKE) -C init/g' fmcb_src/launcher2/Makefile
-          find fmcb_src/launcher2 -name "Makefile*" -exec sed -i 's/-T *linkfile//g; s/EE_LINKFILE.*//g' {} +
-          printf ".globl chkesr_irx\n.globl size_chkesr_irx\nchkesr_irx:\n.word 0\nsize_chkesr_irx:\n.word 4\n" > fmcb_src/launcher2/chkesr.s
-          printf ".globl init_irx\n.globl size_init_irx\ninit_irx:\n.word 0\nsize_init_irx:\n.word 4\n" > fmcb_src/launcher2/init.s
+          cat << 'EOF' > splash_src/Makefile
+          EE_BIN = NABIL_SPLASH.ELF
+          EE_OBJS = main.o
+          EE_LIBS = -lgskit -ldmakit -lpatches -lkernel
+          EE_CFLAGS += -I$(PS2DEV)/gsKit/include
+          EE_LDFLAGS += -L$(PS2DEV)/gsKit/lib -Wl,--defsym -Wl,_start_addr=0x01800000
+          all: $(EE_BIN)
+          include $(PS2SDK)/samples/Makefile.pref
+          include $(PS2SDK)/samples/Makefile.eeglobal
+          EOF
 
-          docker run --rm -v "$PWD/fmcb_src:/src" -w /src ps2dev/ps2dev:v1.2.0 sh -c "export PS2DEV=/usr/local/ps2dev && export PS2SDK=\$PS2DEV/ps2sdk && export PS2SDKSRC=\$PS2SDK && export PATH=\$PATH:\$PS2DEV/bin:\$PS2DEV/ee/bin:\$PS2DEV/iop/bin:\$PS2DEV/dvp/bin:\$PS2SDK/bin && find \$PS2SDK -name '*.h' -exec sed -i 's/#error/\/\/#error/g' {} + && apk add --no-cache make gcc g++ && make -C launcher1 PS2SDK=\$PS2SDK PS2SDKSRC=\$PS2SDK && make -C launcher2 PS2SDK=\$PS2SDK PS2SDKSRC=\$PS2SDK"
-          echo "=== FICHIERS GENERES ==="
-          find fmcb_src/launcher* -maxdepth 2 -type f
+          docker run --rm -v "$PWD/splash_src:/src" -w /src ps2dev/ps2dev:v1.2.0 sh -c "export PS2DEV=/usr/local/ps2dev && export PS2SDK=\$PS2DEV/ps2sdk && export PATH=\$PATH:\$PS2DEV/bin:\$PS2DEV/ee/bin:\$PS2DEV/iop/bin:\$PS2DEV/dvp/bin:\$PS2SDK/bin && apk add --no-cache make gcc g++ && make"
       - uses: actions/upload-artifact@v4
         with:
-          name: FMCB-1.8-CUSTOM-NABIL-GAMES
-          path: |
-            fmcb_src/launcher*/*.elf
-            fmcb_src/launcher*/*.ELF
-            fmcb_src/launcher*/elf_loader/*.elf
-            fmcb_src/launcher*/elf_loader/*.ELF
+          name: NABIL-SPLASH-LAUNCHER
+          path: splash_src/NABIL_SPLASH.ELF
