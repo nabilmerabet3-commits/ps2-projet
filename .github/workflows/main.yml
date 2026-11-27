@@ -67,7 +67,9 @@ jobs:
 
           sed -i '1i #include "/src/compat_2008.h"' fmcb_src/launcher2/launcher2.c
           sed -i 's/make -C chkesr/#make -C chkesr/g; s/\$(MAKE) -C chkesr/#\$(MAKE) -C chkesr/g' fmcb_src/launcher2/Makefile
+          sed -i 's/make -C init/#make -C init/g; s/\$(MAKE) -C init/#\$(MAKE) -C init/g' fmcb_src/launcher2/Makefile
           printf ".globl chkesr_irx\n.globl size_chkesr_irx\nchkesr_irx:\n.word 0\nsize_chkesr_irx:\n.word 4\n" > fmcb_src/launcher2/chkesr.s
+          printf ".globl init_irx\n.globl size_init_irx\ninit_irx:\n.word 0\nsize_init_irx:\n.word 4\n" > fmcb_src/launcher2/init.s
 
           docker run --rm -v "$PWD/fmcb_src:/src" -w /src ps2dev/ps2dev:v1.2.0 sh -c "export PS2DEV=/usr/local/ps2dev && export PS2SDK=\$PS2DEV/ps2sdk && export PS2SDKSRC=\$PS2SDK && export PATH=\$PATH:\$PS2DEV/bin:\$PS2DEV/ee/bin:\$PS2DEV/iop/bin:\$PS2DEV/dvp/bin:\$PS2SDK/bin && find \$PS2SDK -name '*.h' -exec sed -i 's/#error/\/\/#error/g' {} + && apk add --no-cache make gcc g++ && make -C launcher1 PS2SDK=\$PS2SDK PS2SDKSRC=\$PS2SDK && make -C launcher2 PS2SDK=\$PS2SDK PS2SDKSRC=\$PS2SDK"
           echo "=== FICHIERS GENERES ==="
