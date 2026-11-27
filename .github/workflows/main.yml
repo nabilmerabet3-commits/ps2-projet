@@ -68,6 +68,7 @@ jobs:
           sed -i '1i #include "/src/compat_2008.h"' fmcb_src/launcher2/launcher2.c
           sed -i 's/make -C chkesr/#make -C chkesr/g; s/\$(MAKE) -C chkesr/#\$(MAKE) -C chkesr/g' fmcb_src/launcher2/Makefile
           sed -i 's/make -C init/#make -C init/g; s/\$(MAKE) -C init/#\$(MAKE) -C init/g' fmcb_src/launcher2/Makefile
+          find fmcb_src/launcher2 -name "Makefile*" -exec sed -i 's/-G0/-G8/g' {} +
           printf ".globl chkesr_irx\n.globl size_chkesr_irx\nchkesr_irx:\n.word 0\nsize_chkesr_irx:\n.word 4\n" > fmcb_src/launcher2/chkesr.s
           printf ".globl init_irx\n.globl size_init_irx\ninit_irx:\n.word 0\nsize_init_irx:\n.word 4\n" > fmcb_src/launcher2/init.s
 
