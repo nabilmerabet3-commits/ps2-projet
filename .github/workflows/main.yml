@@ -62,6 +62,11 @@ jobs:
           #define CDVD_TYPE_DVDVIDEO 0xFE
           #define CDVD_TYPE_ILLEGAL 0xFF
           #define CDVD_TYPE_UNKNOWN 0x05
+          static inline int padReset(void) { return 1; }
+          static inline int cdInit(int mode) { (void)mode; return 1; }
+          static inline int cdDiskReady(int mode) { (void)mode; return 2; }
+          static inline int cdStatus(void) { return 0; }
+          static inline int cdGetDiscType(void) { return CDVD_TYPE_NODISK; }
           #endif
           EOF
 
