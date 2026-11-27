@@ -40,10 +40,12 @@ jobs:
           EOF
 
           sed -i '1i #include "/src/compat_2008.h"' fmcb_src/launcher2/launcher2.c
-          docker run --rm -v "$PWD/fmcb_src:/src" -w /src ps2dev/ps2dev:v1.2.0 sh -c "export PS2DEV=/usr/local/ps2dev && export PS2SDK=\$PS2DEV/ps2sdk && export PATH=\$PATH:\$PS2DEV/bin:\$PS2DEV/ee/bin:\$PS2DEV/iop/bin:\$PS2DEV/dvp/bin:\$PS2SDK/bin && find \$PS2SDK -name '*.h' -exec sed -i 's/#error/\/\/#error/g' {} + && apk add --no-cache make gcc g++ && make -C launcher1 && make -C launcher2"
+          sed -i 's/.*chkesr.*/\t@true/g' fmcb_src/launcher2/Makefile
           echo "=== FICHIERS DANS LAUNCHER2 ==="
           find fmcb_src/launcher2 -type f
           grep -rn -i "logo" fmcb_src/launcher2/ | head -n 30
+
+          docker run --rm -v "$PWD/fmcb_src:/src" -w /src ps2dev/ps2dev:v1.2.0 sh -c "export PS2DEV=/usr/local/ps2dev && export PS2SDK=\$PS2DEV/ps2sdk && export PATH=\$PATH:\$PS2DEV/bin:\$PS2DEV/ee/bin:\$PS2DEV/iop/bin:\$PS2DEV/dvp/bin:\$PS2SDK/bin && find \$PS2SDK -name '*.h' -exec sed -i 's/#error/\/\/#error/g' {} + && apk add --no-cache make gcc g++ && make -C launcher1 && make -C launcher2"
       - uses: actions/upload-artifact@v4
         with:
           name: FMCB-1.8-LAUNCHER
